@@ -13,11 +13,7 @@ __all__ = [
 
 # TODO: refactor abstraction and make configurable
 
-
-from http import client
-import logging
-
-
+# Default values for the presets
 PRESENCE_PENALTY_BASE = 0.2
 FREQUENCY_PENALTY_BASE = 0.2
 MIN_P_BASE = 0.1  # range of 0.05-0.15 is reasonable
@@ -35,6 +31,7 @@ PRESET_TALEMATE_CONVERSATION = {
     "repetition_penalty_range": 2048,
 }
 
+# Fixed value template for experimentation
 PRESET_TALEMATE_CONVERSATION_FIXED = {
     "temperature": 1,
     "top_p": 1,
@@ -131,11 +128,14 @@ def set_preset(config: dict, kind: str, client=None):
     config.update(preset_for_kind(kind, client))
 
 
-PRESET_MAPPING = {
+PRESET_SUBSTRING_MAPPINGS = {
     "deterministic": PRESET_DETERMINISTIC,
     "creative": PRESET_DIVINE_INTELLECT,
     "simple": PRESET_SIMPLE_1,
-    "analytical": PRESET_ANALYTICAL,
+    "analytical": PRESET_ANALYTICAL
+}
+
+PRESET_MAPPING = {
     "conversation": PRESET_TALEMATE_CONVERSATION,
     "conversation_old": PRESET_TALEMATE_CONVERSATION,
     "conversation_long": PRESET_TALEMATE_CONVERSATION,
@@ -162,11 +162,13 @@ PRESET_MAPPING = {
 }
 
 
-def preset_for_kind(kind: str, client=None):
-    # Handle client-specific presets
+def preset_for_kind(kind: str, client = None) -> dict:
+    # Check the substrings first(based on order of the original elifs)
     if kind.startswith("conversation") and client == "tabbyapi":
         return PRESET_TALEMATE_CONVERSATION_FIXED
-
+    for substring, value in PRESET_SUBSTRING_MAPPINGS.items():
+        if substring in kind:
+            return value
     # Default to PRESET_SIMPLE_1 if kind is not found
     return PRESET_MAPPING.get(kind, PRESET_SIMPLE_1)
 
@@ -198,6 +200,9 @@ TOKEN_MAPPING = {
     "edit_fix_exposition": 1024,
     "edit_fix_continuity": 512,
     "visualize": 150,
+}
+
+TOKEN_SUBSTRING_MAPPINGS = {
     "extensive": 2048,
     "long": 1024,
     "medium2": 512,
@@ -210,11 +215,14 @@ TOKEN_MAPPING = {
 }
 
 
-def max_tokens_for_kind(kind: str, total_budget: int):
+def max_tokens_for_kind(kind: str, total_budget: int) -> int:
     token_value = TOKEN_MAPPING.get(kind)
     if callable(token_value):
         return token_value(total_budget)
-    elif token_value is not None:
+    # If no exact match, check for substrings (order of original elifs)
+    for substring, value in TOKEN_SUBSTRING_MAPPINGS.items():
+        if substring in kind:
+            return value
+    if token_value is not None:
         return token_value
-    else:
-        return 150  # Default value if none of the kinds match
+    return 150  # Default value if none of the kinds match
